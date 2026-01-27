@@ -13,3 +13,10 @@ Chapter7/ros2_ws/log
 Chapter8/ros2_ws/build
 Chapter8/ros2_ws/install
 Chapter8/ros2_ws/log
+
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.ipynb_checkpoints/
+
+*.mp4
