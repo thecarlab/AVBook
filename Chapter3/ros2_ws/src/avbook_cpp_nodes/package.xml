@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>avbook_cpp_nodes</name>
+  <version>0.0.1</version>
+  <description>AVBook Chapter 3 ROS 2 C++ examples: sensor fusion, voxel grid, sobel.</description>
+  <maintainer email="you@example.com">AVBook</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>message_filters</depend>
+  <depend>sensor_msgs</depend>
+
+  <depend>pcl_conversions</depend>
+
+  <depend>cv_bridge</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
