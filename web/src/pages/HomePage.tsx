@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppHeader } from "../components/AppHeader";
-import { ArrowIcon, BookIcon, FlaskIcon } from "../components/Icons";
+import { ArrowIcon, BookIcon, FlaskIcon, QuizIcon } from "../components/Icons";
 import { chapters } from "../data/chapters";
 import { readProgress, type CourseProgress } from "../lib/progress";
 
@@ -53,15 +53,31 @@ export function HomePage() {
             <span className="chapter-count">14 chapters · {demoCount} recorded-data labs · 1,400 reasoning questions</span>
           </div>
           <ol className="chapter-rail">
-            {chapters.map((chapter) => (
-              <li key={chapter.id} className={progress.completed.includes(chapter.id) ? "is-complete" : ""}>
-                <a href={`#/chapter/${chapter.id}`}>
-                  <span className="chapter-number">{String(chapter.id).padStart(2, "0")}</span>
-                  <span>{chapter.shortTitle}</span>
-                  <ArrowIcon />
-                </a>
-              </li>
-            ))}
+            {chapters.map((chapter) => {
+              const bestScore = progress.bestScores[chapter.id];
+              const hasDemo = chapter.demos.length > 0;
+              const scoreLabel = bestScore === undefined ? "Quiz not taken" : `Best quiz: ${bestScore}/10`;
+
+              return (
+                <li key={chapter.id} className={progress.completed.includes(chapter.id) ? "is-complete" : ""}>
+                  <a
+                    href={`#/chapter/${chapter.id}`}
+                    aria-label={`Chapter ${chapter.id}: ${chapter.shortTitle}. ${hasDemo ? "Includes a recorded-data lab. " : ""}${scoreLabel}.`}
+                  >
+                    <span className="chapter-number">{String(chapter.id).padStart(2, "0")}</span>
+                    <span className="chapter-title">{chapter.shortTitle}</span>
+                    <span className="chapter-card-status">
+                      {hasDemo ? <span className="chapter-demo-badge"><FlaskIcon /> Data lab</span> : null}
+                      <span className={`chapter-score${bestScore === undefined ? " is-empty" : ""}`}>
+                        <QuizIcon />
+                        {scoreLabel}
+                      </span>
+                    </span>
+                    <ArrowIcon className="chapter-arrow" />
+                  </a>
+                </li>
+              );
+            })}
           </ol>
         </section>
 
