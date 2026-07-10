@@ -1,4 +1,4 @@
-import { BookIcon, FlaskIcon, QuizIcon, RoadLogo } from "./Icons";
+import { BookIcon, FlaskIcon, QuizIcon } from "./Icons";
 
 interface AppHeaderProps {
   compact?: boolean;
@@ -8,9 +8,9 @@ interface AppHeaderProps {
 export function AppHeader({ compact = false, chapterId }: AppHeaderProps) {
   return (
     <header className="app-header">
-      <a className="brand" href="#/" aria-label="Autonomous Driving Lab home">
-        <RoadLogo className="brand-mark" />
-        <span>Autonomous Driving Lab</span>
+      <a className="brand" href="https://www.thecarlab.org/" target="_blank" rel="noreferrer" aria-label="The CAR Lab website (opens in a new tab)">
+        <img className="brand-mark" src="./carlab-logo.png" alt="" />
+        <span className="brand-name"><strong>The CAR Lab</strong><small>Connected and Autonomous Research Laboratory</small></span>
       </a>
       {compact ? (
         <nav className="header-nav" aria-label="Chapter navigation">

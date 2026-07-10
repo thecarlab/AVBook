@@ -2,9 +2,9 @@
 
 This repository accompanies *Introduction to Autonomous Driving* by Weisong Shi and Yuankai He. It contains chapter examples, ROS 2 workspaces, course projects, lecture material, and a browser-based learning companion.
 
-## Autonomous Driving Lab
+## The CAR Lab Autonomous Driving Companion
 
-The static learning companion covers all 14 chapters in `AutonomousDrivingBook.pdf` and includes:
+Developed by [The CAR Lab](https://www.thecarlab.org/)—the Connected and Autonomous Research Laboratory at the University of Delaware—the static learning companion covers all 14 chapters in `AutonomousDrivingBook.pdf` and includes:
 
 - eight browser labs in the chapters where a compact, authentic evidence source supports a meaningful analysis;
 - recorded road video and CAN, IMU, GNSS, fused-pose, V2X, CAN-attack, incident-report, and deployment-event data;

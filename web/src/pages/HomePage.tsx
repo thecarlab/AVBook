@@ -88,7 +88,7 @@ export function HomePage() {
         </section>
       </main>
       <footer className="site-footer">
-        <span>Autonomous Driving Lab</span>
+        <a href="https://www.thecarlab.org/" target="_blank" rel="noreferrer">The CAR Lab</a>
         <span>Companion to <em>Introduction to Autonomous Driving</em></span>
       </footer>
     </div>

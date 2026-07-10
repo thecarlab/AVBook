@@ -2,16 +2,6 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-export function RoadLogo(props: IconProps) {
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden="true" {...props}>
-      <rect x="1" y="1" width="38" height="38" rx="11" fill="white" stroke="currentColor" opacity=".98" />
-      <path d="M14 31 18 8M26 31 22 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M20 30v-4m0-5v-4m0-5V8" fill="none" stroke="#a8dc18" strokeWidth="2.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function ArrowIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
