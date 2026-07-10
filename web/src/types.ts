@@ -20,6 +20,7 @@ export interface ChapterSection {
   number: string;
   title: string;
   page: number;
+  summary?: string;
 }
 
 export interface Chapter {

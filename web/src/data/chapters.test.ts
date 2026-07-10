@@ -28,4 +28,16 @@ describe("chapter demo catalog", () => {
     expect(chapters.filter((chapter) => chapter.demos.length === 0).map((chapter) => chapter.id))
       .toEqual([1, 2, 5, 7, 10, 14]);
   });
+
+  it("provides concise book-grounded coverage summaries without reproducing chapters", () => {
+    for (const chapter of chapters) {
+      const summaries = chapter.sections.flatMap((section) => section.summary ? [section.summary] : []);
+      expect(summaries.length).toBeGreaterThanOrEqual(2);
+      expect(summaries.length).toBeLessThanOrEqual(3);
+      for (const summary of summaries) {
+        expect(summary.length).toBeGreaterThanOrEqual(80);
+        expect(summary.length).toBeLessThanOrEqual(260);
+      }
+    }
+  });
 });

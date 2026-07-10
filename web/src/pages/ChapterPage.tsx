@@ -16,9 +16,7 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
   const previous = chapters[chapter.id - 2];
   const next = chapters[chapter.id];
   const completed = readProgress().completed.includes(chapter.id);
-  const highlightSections = chapter.sections
-    .filter((section) => !/^(Introduction|Hands-on Exercises|Conclusion)$/i.test(section.title))
-    .slice(0, 3);
+  const highlightSections = chapter.sections.filter((section) => section.summary).slice(0, 3);
   const overviewSections = highlightSections.length >= 2 ? highlightSections : chapter.sections.slice(0, 3);
 
   function scrollToSection(event: React.MouseEvent<HTMLAnchorElement>, sectionId: string) {
@@ -55,7 +53,7 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
               <div className="chapter-title-tools">
                 <div className="chapter-progress-mini"><span>Chapter progress</span><strong>{completed ? "100%" : "0%"}</strong><i><b style={{ width: completed ? "100%" : "0%" }} /></i></div>
                 <span className="book-page-link">
-                  <BookIcon /> Book pages {chapter.pageStart}–{chapter.pageEnd}
+                  <BookIcon /> Chapter {chapter.id} reading map
                 </span>
               </div>
             </div>
@@ -79,11 +77,12 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
               </div>
             </div>
             <div className="overview-highlights">
-              {overviewSections.map((section, index) => (
+              {overviewSections.map((section) => (
                 <div key={section.number} className="overview-highlight">
-                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <span>{section.number}</span>
+                  <small>Chapter {chapter.id} · Section {section.number}</small>
                   <strong>{section.title}</strong>
-                  <small>Section {section.number} · p. {section.page}</small>
+                  {section.summary ? <p>{section.summary}</p> : null}
                 </div>
               ))}
             </div>
@@ -92,9 +91,8 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
               <ol className="section-list">
                 {chapter.sections.map((section) => (
                   <li key={section.number}>
-                    <span>{section.number}</span>
+                    <span>Section {section.number}</span>
                     <strong>{section.title}</strong>
-                    <span className="page-reference">p. {section.page}</span>
                   </li>
                 ))}
               </ol>
