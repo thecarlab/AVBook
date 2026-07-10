@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "validate": "npm run test && npm run build"
+    "data:check": "node scripts/validate_real_data.mjs",
+    "validate": "npm run data:check && npm run test && npm run build"
   },
   "dependencies": {
     "@fontsource/dm-mono": "^5.2.7",

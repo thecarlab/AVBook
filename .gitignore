@@ -20,6 +20,7 @@ Chapter8/ros2_ws/log
 **/.ipynb_checkpoints/
 
 *.mp4
+!web/public/data/comma2k19/segment-10.mp4
 
 web/node_modules/
 web/dist/

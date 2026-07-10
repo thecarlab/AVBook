@@ -1,17 +1,50 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { ArrowIcon, BookIcon, CheckIcon, CloseIcon } from "../components/Icons";
 import { createQuizAttempt } from "../data/quizBank";
-import { questionBanks } from "../data/questions";
+import { loadQuestionBank } from "../data/questions";
 import { completeChapter } from "../lib/progress";
-import type { Chapter, QuizAnswer, QuizQuestion } from "../types";
+import type { Chapter, QuizQuestion, QuizStimulus } from "../types";
 
 interface QuizPageProps {
   chapter: Chapter;
 }
 
 export function QuizPage({ chapter }: QuizPageProps) {
-  const bank = questionBanks[chapter.id];
+  const [bank, setBank] = useState<QuizQuestion[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setBank(null);
+    setLoadError(null);
+    loadQuestionBank(chapter.id)
+      .then((questions) => { if (active) setBank(questions); })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Unknown quiz-loading error");
+      });
+    return () => { active = false; };
+  }, [chapter.id, loadAttempt]);
+
+  return (
+    <div className="site-shell quiz-shell">
+      <AppHeader compact chapterId={chapter.id} />
+      <main id="main-content" className="quiz-main">
+        {bank ? <QuizSession key={`${chapter.id}-${loadAttempt}`} chapter={chapter} bank={bank} /> : (
+          <div className="quiz-bank-state" role={loadError ? "alert" : "status"}>
+            <span className={loadError ? "error" : "loading"} />
+            <h1>{loadError ? "The quiz could not be prepared" : "Preparing this chapter’s cases…"}</h1>
+            <p>{loadError ?? "Loading only this chapter’s 100-question assessment bank."}</p>
+            {loadError ? <button className="button button-dark" type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Try loading again</button> : null}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function QuizSession({ chapter, bank }: QuizPageProps & { bank: QuizQuestion[] }) {
   const [attemptNumber, setAttemptNumber] = useState(0);
   const questions = useMemo(() => createQuizAttempt(bank, 10), [bank, attemptNumber]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -43,25 +76,18 @@ export function QuizPage({ chapter }: QuizPageProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  return (
-    <div className="site-shell quiz-shell">
-      <AppHeader compact chapterId={chapter.id} />
-      <main id="main-content" className="quiz-main">
-        {submitted ? (
-          <QuizResults chapter={chapter} questions={questions} answers={answers} score={score} onRestart={restart} />
-        ) : (
-          <QuizAttempt
-            chapter={chapter}
-            questions={questions}
-            answers={answers}
-            current={current}
-            onChoose={choose}
-            onCurrent={setCurrent}
-            onSubmit={submit}
-          />
-        )}
-      </main>
-    </div>
+  return submitted ? (
+    <QuizResults chapter={chapter} questions={questions} answers={answers} score={score} onRestart={restart} />
+  ) : (
+    <QuizAttempt
+      chapter={chapter}
+      questions={questions}
+      answers={answers}
+      current={current}
+      onChoose={choose}
+      onCurrent={setCurrent}
+      onSubmit={submit}
+    />
   );
 }
 
@@ -87,13 +113,14 @@ function QuizAttempt({ chapter, questions, answers, current, onChoose, onCurrent
         <div>
           <p className="chapter-label">Chapter {chapter.id} quiz</p>
           <h1>{chapter.title}</h1>
-          <p>Ten questions selected from a 100-question bank. Results and explanations appear after submission.</p>
+          <p>Ten questions selected from a 100-question bank: two each for application, diagnosis, comparison, causal reasoning, and transfer. Results and reasoning appear after submission.</p>
         </div>
         <span className="quiz-position">{current + 1} / 10</span>
       </header>
       <div className="quiz-progress-track" aria-hidden="true"><span style={{ width: `${((current + 1) / questions.length) * 100}%` }} /></div>
       <fieldset className="question-card">
-        <legend><span>Question {current + 1}</span>{question.prompt}</legend>
+        <legend><span>Question {current + 1}{question.skill ? ` · ${formatSkill(question.skill)}` : ""}</span>{question.prompt}</legend>
+        {question.stimulus ? <QuizStimulusView stimulus={question.stimulus} /> : null}
         <div className="choice-list">
           {question.choices.map((choice, index) => (
             <label key={choice.id} className={answers[question.id] === choice.id ? "selected" : ""}>
@@ -144,9 +171,9 @@ interface QuizResultsProps {
 
 function QuizResults({ chapter, questions, answers, score, onRestart }: QuizResultsProps) {
   const message = score === 10
-    ? "Excellent — every concept in this set is secure."
+    ? "Excellent — every reasoning case in this set is secure."
     : score >= 7
-      ? `Great work — review ${10 - score === 1 ? "the one concept" : `the ${10 - score} concepts`} below, then try a fresh set.`
+      ? `Great work — review ${10 - score === 1 ? "the one case" : `the ${10 - score} cases`} below, then try a fresh set.`
       : "Use the explanations below to revisit the chapter, then try a fresh set.";
 
   return (
@@ -160,7 +187,7 @@ function QuizResults({ chapter, questions, answers, score, onRestart }: QuizResu
           <button className="button button-dark" type="button" onClick={onRestart}>↻ Try another quiz</button>
           <a className="button button-secondary" href={`#/chapter/${chapter.id}`}><BookIcon /> Return to chapter</a>
         </div>
-        <small>10 questions randomly selected from 100</small>
+        <small>10 of 100 questions · balanced across five reasoning skills</small>
       </header>
       <div className="results-summary">
         <span><CheckIcon /> Correct</span>
@@ -183,9 +210,11 @@ function QuizResults({ chapter, questions, answers, score, onRestart }: QuizResu
                   <span className="answer-label">{isCorrect ? "Correct" : "Needs review"}</span>
                 </summary>
                 <div className="answer-details">
+                  {question.stimulus ? <div className="answer-stimulus"><QuizStimulusView stimulus={question.stimulus} compact /></div> : null}
                   <div><span>Your answer</span><strong>{selected?.text}</strong></div>
                   {!isCorrect ? <div><span>Correct answer</span><strong>{correct?.text}</strong></div> : null}
-                  <div><span>Explanation</span><p>{question.explanation}</p></div>
+                  {selected?.feedback ? <div><span>Why your choice works or fails</span><p>{selected.feedback}</p></div> : null}
+                  <div><span>Reasoning</span>{question.reasoning ? <ol>{question.reasoning.map((step) => <li key={step}>{step}</li>)}</ol> : <p>{question.explanation}</p>}{question.takeaway ? <p className="answer-takeaway"><strong>Takeaway:</strong> {question.takeaway}</p> : null}</div>
                   <div><span>Reference</span><strong className="reference-text">Section {question.section} · p. {question.page}</strong></div>
                 </div>
               </details>
@@ -195,4 +224,21 @@ function QuizResults({ chapter, questions, answers, score, onRestart }: QuizResu
       </ol>
     </div>
   );
+}
+
+function QuizStimulusView({ stimulus, compact = false }: { stimulus: QuizStimulus; compact?: boolean }) {
+  if (stimulus.kind === "scenario") {
+    return <div className={`quiz-stimulus stimulus-scenario ${compact ? "compact" : ""}`}><span>Case evidence</span><p>{stimulus.text}</p></div>;
+  }
+  if (stimulus.kind === "log") {
+    return <figure className={`quiz-stimulus stimulus-log ${compact ? "compact" : ""}`}><figcaption>{stimulus.caption}</figcaption><pre>{stimulus.lines.join("\n")}</pre></figure>;
+  }
+  if (stimulus.kind === "table") {
+    return <figure className={`quiz-stimulus stimulus-table ${compact ? "compact" : ""}`}><figcaption>{stimulus.caption}</figcaption><div><table><thead><tr>{stimulus.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{stimulus.rows.map((row, rowIndex) => <tr key={`${rowIndex}-${row.join("-")}`}>{row.map((cell, cellIndex) => <td key={`${cellIndex}-${cell}`}>{cell}</td>)}</tr>)}</tbody></table></div></figure>;
+  }
+  return <figure className={`quiz-stimulus stimulus-image ${compact ? "compact" : ""}`}><img src={stimulus.src} alt={stimulus.alt} /><figcaption>{stimulus.caption}</figcaption></figure>;
+}
+
+function formatSkill(skill: string) {
+  return skill === "causal" ? "causal reasoning" : skill;
 }

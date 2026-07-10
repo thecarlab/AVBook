@@ -1,28 +1,12 @@
 export type DemoKind =
-  | "sorter"
-  | "timeline"
-  | "flow"
-  | "scenario"
-  | "compare"
-  | "calibration"
-  | "network"
-  | "threshold"
-  | "tracking"
-  | "transform"
-  | "registration"
-  | "fusion"
-  | "planner"
-  | "trajectory"
-  | "control"
-  | "budget"
-  | "queue"
-  | "tradeoff"
-  | "futures"
-  | "threats"
-  | "testing"
-  | "coverage"
-  | "architecture"
-  | "offload";
+  | "comma-sensor-evidence"
+  | "tampa-bsm-evidence"
+  | "comma-localization-evidence"
+  | "comma-control-alignment"
+  | "comma-timing-audit"
+  | "road-can-evidence"
+  | "nhtsa-safety-evidence"
+  | "cassi-deployment-evidence";
 
 export interface DemoDefinition {
   id: string;
@@ -30,7 +14,6 @@ export interface DemoDefinition {
   title: string;
   description: string;
   accent: "lime" | "cyan" | "coral";
-  config: Record<string, unknown>;
 }
 
 export interface ChapterSection {
@@ -50,21 +33,79 @@ export interface Chapter {
   demos: DemoDefinition[];
 }
 
-export interface QuizConcept {
-  id: string;
-  chapterId: number;
-  term: string;
-  correct: string;
-  distractors: [string, string, string];
-  clue: string;
-  scenario: string;
+export type CognitiveSkill =
+  "application" | "diagnosis" | "comparison" | "causal" | "transfer";
+
+export type QuizDifficulty = "foundational" | "intermediate" | "advanced";
+
+export interface ChapterReference {
   section: string;
   page: number;
+}
+
+export interface LearningObjective {
+  id: string;
+  chapterId: number;
+  behavior: string;
+  priority: "core" | "supporting";
+  references: [ChapterReference, ...ChapterReference[]];
+}
+
+export type QuizStimulus =
+  | { kind: "scenario"; text: string }
+  | {
+      kind: "table";
+      caption: string;
+      columns: string[];
+      rows: Array<Array<string | number>>;
+    }
+  | { kind: "log"; caption: string; lines: string[] }
+  | { kind: "image"; src: string; alt: string; caption: string };
+
+export type AssessmentChoiceId = "a" | "b" | "c" | "d";
+
+export interface AssessmentChoice {
+  id: AssessmentChoiceId;
+  text: string;
+  feedback: string;
+  misconception?: string;
+}
+
+export interface AssessmentProbe {
+  skill: CognitiveSkill;
+  difficulty: QuizDifficulty;
+  prompt: string;
+  objectiveIds: [string, ...string[]];
+  choices: [
+    AssessmentChoice,
+    AssessmentChoice,
+    AssessmentChoice,
+    AssessmentChoice,
+  ];
+  correctChoiceId: AssessmentChoiceId;
+  reasoning: [string, ...string[]];
+  takeaway: string;
+  references: [ChapterReference, ...ChapterReference[]];
+}
+
+export interface AssessmentCase {
+  id: string;
+  chapterId: number;
+  stimulus: QuizStimulus;
+  probes: Record<CognitiveSkill, AssessmentProbe>;
+}
+
+export interface ChapterAssessment {
+  chapterId: number;
+  objectives: LearningObjective[];
+  cases: AssessmentCase[];
 }
 
 export interface QuizChoice {
   id: string;
   text: string;
+  feedback?: string;
+  misconception?: string;
 }
 
 export interface QuizQuestion {
@@ -76,6 +117,14 @@ export interface QuizQuestion {
   explanation: string;
   section: string;
   page: number;
+  caseId?: string;
+  skill?: CognitiveSkill;
+  difficulty?: QuizDifficulty;
+  objectiveIds?: string[];
+  stimulus?: QuizStimulus;
+  reasoning?: string[];
+  takeaway?: string;
+  references?: ChapterReference[];
 }
 
 export interface QuizAnswer {

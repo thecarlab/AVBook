@@ -61,7 +61,9 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
             </div>
             <nav className="chapter-tabs" aria-label="On this page">
               <a href={`#/chapter/${chapter.id}`} onClick={(event) => scrollToSection(event, "overview")}><BookIcon /> Overview</a>
-              <a href={`#/chapter/${chapter.id}`} onClick={(event) => scrollToSection(event, "demos")}><FlaskIcon /> Demos</a>
+              {chapter.demos.length > 0
+                ? <a href={`#/chapter/${chapter.id}`} onClick={(event) => scrollToSection(event, "demos")}><FlaskIcon /> Data labs</a>
+                : null}
               <a href={`#/chapter/${chapter.id}`} onClick={(event) => scrollToSection(event, "quiz")}><QuizIcon /> Quiz</a>
             </nav>
           </header>
@@ -71,7 +73,9 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
               <span className="section-number">01</span>
               <div>
                 <h2 id="overview-heading">What this chapter covers</h2>
-                <p>Use the book sections as your reading map, then test the ideas in the browser labs below.</p>
+                <p>{chapter.demos.length > 0
+                  ? "Use the book sections as your reading map, then analyze the recorded evidence below."
+                  : "Use the book sections as your reading map, then test your understanding in the case-based quiz."}</p>
               </div>
             </div>
             <div className="overview-highlights">
@@ -97,27 +101,29 @@ export function ChapterPage({ chapter }: ChapterPageProps) {
             </details>
           </section>
 
-          <section className="demos-section" id="demos" aria-labelledby="demos-heading">
-            <div className="section-intro">
-              <span className="section-number">02</span>
-              <div>
-                <h2 id="demos-heading">Interactive demos</h2>
-                <p>Change one variable at a time, observe the result, and connect it back to the chapter.</p>
+          {chapter.demos.length > 0 ? (
+            <section className="demos-section" id="demos" aria-labelledby="demos-heading">
+              <div className="section-intro">
+                <span className="section-number">02</span>
+                <div>
+                  <h2 id="demos-heading">Recorded-data labs</h2>
+                  <p>Inspect authentic records, traces, or media; test an analytical decision; and keep the source limitations visible.</p>
+                </div>
               </div>
-            </div>
-            <div className="demo-stack">
-              {chapter.demos.map((demo, index) => (
-                <DemoRenderer key={demo.id} demo={demo} chapterId={chapter.id} index={index + 1} />
-              ))}
-            </div>
-          </section>
+              <div className="demo-stack">
+                {chapter.demos.map((demo, index) => (
+                  <DemoRenderer key={demo.id} demo={demo} index={index + 1} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="quiz-entry" id="quiz" aria-labelledby="quiz-entry-heading">
             <div className="quiz-entry-icon"><QuizIcon /></div>
             <div>
-              <span className="section-number">03</span>
+              <span className="section-number">{chapter.demos.length > 0 ? "03" : "02"}</span>
               <h2 id="quiz-entry-heading">Check your understanding</h2>
-              <p>Ten questions are randomly selected from this chapter’s 100-question bank. Answer choices are reshuffled for every attempt.</p>
+              <p>Ten case-based questions are selected from this chapter’s 100-question bank to test application, diagnosis, comparison, cause, and transfer—not wording recall.</p>
             </div>
             <a className="button button-dark" href={`#/chapter/${chapter.id}/quiz`}>Start quiz <ArrowIcon /></a>
           </section>

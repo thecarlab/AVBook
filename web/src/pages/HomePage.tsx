@@ -19,6 +19,7 @@ export function HomePage() {
 
   const continueChapter = chapters.find((chapter) => chapter.id === progress.lastChapter) ?? chapters[0];
   const percent = Math.round((progress.completed.length / chapters.length) * 100);
+  const demoCount = chapters.reduce((total, chapter) => total + chapter.demos.length, 0);
 
   return (
     <div className="site-shell">
@@ -27,7 +28,7 @@ export function HomePage() {
         <section className="home-hero" aria-labelledby="home-heading">
           <div className="hero-copy">
             <h1 id="home-heading">Learn autonomous driving by doing.</h1>
-            <p>Explore 14 chapters, run browser-based experiments, and check your understanding with a fresh quiz every time.</p>
+            <p>Explore 14 chapters, analyze authentic driving evidence where a defensible dataset exists, and solve a fresh set of reasoning cases every time.</p>
             <div className="hero-actions">
               <a className="button button-primary" href="#/chapter/1">Start Chapter 1 <ArrowIcon /></a>
               <a className="button button-secondary" href="#chapters">Browse chapters <ArrowIcon /></a>
@@ -49,7 +50,7 @@ export function HomePage() {
               <h2 id="chapters-heading">Fourteen connected chapters</h2>
               <p>Move from foundations and sensing to planning, security, testing, and vehicle computing.</p>
             </div>
-            <span className="chapter-count">14 chapters · 28 demos · 1,400 questions</span>
+            <span className="chapter-count">14 chapters · {demoCount} recorded-data labs · 1,400 reasoning questions</span>
           </div>
           <ol className="chapter-rail">
             {chapters.map((chapter) => (
@@ -80,7 +81,9 @@ export function HomePage() {
           </div>
           <div className="continue-actions">
             <a className="button button-primary" href={`#/chapter/${continueChapter.id}`}>Continue chapter <ArrowIcon /></a>
-            <a className="button button-secondary" href={`#/chapter/${continueChapter.id}`}><FlaskIcon /> Try a demo</a>
+            {continueChapter.demos.length > 0
+              ? <a className="button button-secondary" href={`#/chapter/${continueChapter.id}`}><FlaskIcon /> Open data lab</a>
+              : null}
           </div>
         </section>
       </main>

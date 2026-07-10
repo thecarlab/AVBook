@@ -1,122 +1,243 @@
-import type { QuizConcept, QuizQuestion } from "../types";
+import type {
+  AssessmentCase,
+  ChapterAssessment,
+  CognitiveSkill,
+  QuizQuestion,
+  QuizStimulus,
+} from "../types";
 
 const QUESTION_COUNT = 100;
+const CASE_COUNT = 20;
 
-function related<T>(items: T[], index: number, offset: number): T {
-  return items[(index + offset) % items.length];
+export const COGNITIVE_SKILLS: readonly CognitiveSkill[] = [
+  "application",
+  "diagnosis",
+  "comparison",
+  "causal",
+  "transfer",
+];
+
+const FORBIDDEN_RECALL_WRAPPERS = [
+  /which statement best describes/i,
+  /which chapter concept/i,
+  /according to this chapter/i,
+  /study notes/i,
+  /which term should/i,
+  /which concept best explains/i,
+];
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
 }
 
-function makeChoices(
-  id: string,
-  correct: string,
-  distractors: readonly [string, string, string] | string[],
-): QuizQuestion["choices"] {
-  return [correct, ...distractors.slice(0, 3)].map((text, index) => ({
-    id: `${id}-${index === 0 ? "correct" : `d${index}`}`,
-    text,
-  }));
+function stimulusText(stimulus: QuizStimulus): string {
+  switch (stimulus.kind) {
+    case "scenario":
+      return stimulus.text;
+    case "table":
+      return [
+        stimulus.caption,
+        ...stimulus.columns,
+        ...stimulus.rows.flat(),
+      ].join(" ");
+    case "log":
+      return [stimulus.caption, ...stimulus.lines].join(" ");
+    case "image":
+      return `${stimulus.caption} ${stimulus.alt}`;
+  }
+}
+
+function validateCase(
+  assessmentCase: AssessmentCase,
+  assessment: ChapterAssessment,
+  objectiveIds: Set<string>,
+): void {
+  const label = `Chapter ${assessment.chapterId}, case ${assessmentCase.id}`;
+  assert(
+    assessmentCase.chapterId === assessment.chapterId,
+    `${label} has the wrong chapterId.`,
+  );
+  assert(assessmentCase.id.trim().length > 0, `${label} needs an id.`);
+  assert(
+    !FORBIDDEN_RECALL_WRAPPERS.some((pattern) =>
+      pattern.test(stimulusText(assessmentCase.stimulus)),
+    ),
+    `${label}'s stimulus uses a recall-only wrapper.`,
+  );
+
+  const probeKeys = Object.keys(assessmentCase.probes);
+  assert(
+    probeKeys.length === COGNITIVE_SKILLS.length,
+    `${label} needs exactly five probes.`,
+  );
+
+  COGNITIVE_SKILLS.forEach((skill) => {
+    const probe = assessmentCase.probes[skill];
+    assert(probe, `${label} is missing its ${skill} probe.`);
+    assert(
+      probe.skill === skill,
+      `${label}'s ${skill} probe has a mismatched skill.`,
+    );
+    assert(
+      probe.prompt.trim().length >= 20,
+      `${label}'s ${skill} prompt is too short.`,
+    );
+    assert(
+      !FORBIDDEN_RECALL_WRAPPERS.some((pattern) => pattern.test(probe.prompt)),
+      `${label}'s ${skill} prompt uses a recall-only wrapper.`,
+    );
+    assert(
+      probe.choices.length === 4,
+      `${label}'s ${skill} probe needs four choices.`,
+    );
+    assert(
+      new Set(probe.choices.map((choice) => choice.id)).size === 4,
+      `${label}'s ${skill} choice ids must be unique.`,
+    );
+    assert(
+      new Set(probe.choices.map((choice) => choice.text.trim().toLowerCase()))
+        .size === 4,
+      `${label}'s ${skill} choice text must be unique.`,
+    );
+    assert(
+      probe.choices.some((choice) => choice.id === probe.correctChoiceId),
+      `${label}'s ${skill} answer key does not match a choice.`,
+    );
+    probe.choices.forEach((choice) => {
+      assert(
+        choice.text.trim().length > 0,
+        `${label}'s ${skill} choices cannot be empty.`,
+      );
+      assert(
+        choice.feedback.trim().length >= 12,
+        `${label}'s ${skill} choices need feedback.`,
+      );
+    });
+    assert(
+      new Set(
+        probe.choices.map((choice) => choice.feedback.trim().toLowerCase()),
+      ).size >= 3,
+      `${label}'s ${skill} probe needs distinct misconception feedback.`,
+    );
+    assert(
+      probe.reasoning.length > 0,
+      `${label}'s ${skill} probe needs reasoning.`,
+    );
+    assert(
+      probe.takeaway.trim().length >= 15,
+      `${label}'s ${skill} probe needs a takeaway.`,
+    );
+    assert(
+      probe.references.length > 0,
+      `${label}'s ${skill} probe needs a reference.`,
+    );
+    probe.objectiveIds.forEach((objectiveId) => {
+      assert(
+        objectiveIds.has(objectiveId),
+        `${label}'s ${skill} probe uses unknown objective ${objectiveId}.`,
+      );
+    });
+  });
 }
 
 export function buildQuestionBank(
-  chapterId: number,
-  concepts: QuizConcept[],
+  assessment: ChapterAssessment,
 ): QuizQuestion[] {
-  if (concepts.length < 12) {
-    throw new Error(`Chapter ${chapterId} needs at least 12 quiz concepts.`);
-  }
+  assert(
+    assessment.cases.length === CASE_COUNT,
+    `Chapter ${assessment.chapterId} needs exactly 20 cases.`,
+  );
+  assert(
+    assessment.objectives.length > 0,
+    `Chapter ${assessment.chapterId} needs learning objectives.`,
+  );
 
-  const questionsByVariant: QuizQuestion[][] = Array.from({ length: 9 }, () => []);
-
-  concepts.forEach((concept, index) => {
-    const next = related(concepts, index, 1);
-    const second = related(concepts, index, 2);
-    const third = related(concepts, index, 3);
-    const termDistractors = [next.term, second.term, third.term];
-    const scenarioDistractors = [next.scenario, second.scenario, third.scenario];
-    const pairingDistractors = [
-      `${next.term} — ${concept.distractors[0]}`,
-      `${second.term} — ${concept.distractors[1]}`,
-      `${third.term} — ${concept.distractors[2]}`,
-    ];
-    const variants: Array<{
-      suffix: string;
-      prompt: string;
-      correct: string;
-      distractors: string[];
-    }> = [
-      {
-        suffix: "definition",
-        prompt: `Which statement best describes ${concept.term}?`,
-        correct: concept.correct,
-        distractors: concept.distractors,
-      },
-      {
-        suffix: "identify",
-        prompt: `Which chapter concept matches this description: ${concept.clue}`,
-        correct: concept.term,
-        distractors: termDistractors,
-      },
-      {
-        suffix: "scenario",
-        prompt: `${concept.scenario} Which concept best explains this situation?`,
-        correct: concept.term,
-        distractors: termDistractors,
-      },
-      {
-        suffix: "pairing",
-        prompt: `Which pairing accurately captures the idea in this clue: ${concept.clue}`,
-        correct: `${concept.term} — ${concept.correct}`,
-        distractors: pairingDistractors,
-      },
-      {
-        suffix: "notes",
-        prompt: `Which sentence belongs in accurate study notes about ${concept.term}?`,
-        correct: concept.correct,
-        distractors: concept.distractors,
-      },
-      {
-        suffix: "role",
-        prompt: `According to this chapter, what is the primary role or meaning of ${concept.term}?`,
-        correct: concept.correct,
-        distractors: concept.distractors,
-      },
-      {
-        suffix: "example",
-        prompt: `Which example best illustrates ${concept.term}?`,
-        correct: concept.scenario,
-        distractors: scenarioDistractors,
-      },
-      {
-        suffix: "clue",
-        prompt: `A classmate writes, “${concept.clue}” Which term should label that note?`,
-        correct: concept.term,
-        distractors: termDistractors,
-      },
-      {
-        suffix: "review",
-        prompt: `During a review of ${concept.term}, which statement should the class keep?`,
-        correct: concept.correct,
-        distractors: concept.distractors,
-      },
-    ];
-
-    variants.forEach((variant, variantIndex) => {
-      const id = `ch${chapterId}-${concept.id}-${variant.suffix}`;
-      const choices = makeChoices(id, variant.correct, variant.distractors);
-      questionsByVariant[variantIndex].push({
-        id,
-        chapterId,
-        prompt: variant.prompt,
-        choices,
-        correctChoiceId: choices[0].id,
-        explanation: concept.correct,
-        section: concept.section,
-        page: concept.page,
-      });
-    });
+  const objectiveIds = new Set(
+    assessment.objectives.map((objective) => objective.id),
+  );
+  assert(
+    objectiveIds.size === assessment.objectives.length,
+    `Chapter ${assessment.chapterId} learning-objective ids must be unique.`,
+  );
+  assessment.objectives.forEach((objective) => {
+    assert(
+      objective.chapterId === assessment.chapterId,
+      `Objective ${objective.id} has the wrong chapterId.`,
+    );
+    assert(
+      objective.references.length > 0,
+      `Objective ${objective.id} needs a chapter reference.`,
+    );
   });
 
-  return questionsByVariant.flat().slice(0, QUESTION_COUNT);
+  const caseIds = new Set(
+    assessment.cases.map((assessmentCase) => assessmentCase.id),
+  );
+  assert(
+    caseIds.size === assessment.cases.length,
+    `Chapter ${assessment.chapterId} case ids must be unique.`,
+  );
+  assessment.cases.forEach((assessmentCase) =>
+    validateCase(assessmentCase, assessment, objectiveIds),
+  );
+
+  const bank = assessment.cases.flatMap((assessmentCase) =>
+    COGNITIVE_SKILLS.map((skill) => {
+      const probe = assessmentCase.probes[skill];
+      const id = `ch${assessment.chapterId}-${assessmentCase.id}-${skill}`;
+      const choices = probe.choices.map((choice, index) => ({
+        id: `${id}-c${index + 1}`,
+        text: choice.text,
+        feedback: choice.feedback,
+        misconception: choice.misconception,
+      }));
+      const correctIndex = probe.choices.findIndex(
+        (choice) => choice.id === probe.correctChoiceId,
+      );
+      const [primaryReference] = probe.references;
+
+      return {
+        id,
+        chapterId: assessment.chapterId,
+        caseId: assessmentCase.id,
+        skill,
+        difficulty: probe.difficulty,
+        objectiveIds: [...probe.objectiveIds],
+        stimulus: assessmentCase.stimulus,
+        prompt: probe.prompt,
+        choices,
+        correctChoiceId: choices[correctIndex].id,
+        explanation: `${probe.reasoning.join(" ")} ${probe.takeaway}`,
+        reasoning: [...probe.reasoning],
+        takeaway: probe.takeaway,
+        references: probe.references.map((reference) => ({ ...reference })),
+        section: primaryReference.section,
+        page: primaryReference.page,
+      } satisfies QuizQuestion;
+    }),
+  );
+
+  assert(
+    bank.length === QUESTION_COUNT,
+    `Chapter ${assessment.chapterId} must produce 100 questions.`,
+  );
+  assert(
+    new Set(bank.map((question) => question.id)).size === QUESTION_COUNT,
+    "Question ids must be unique.",
+  );
+  assert(
+    new Set(bank.map((question) => question.prompt.trim().toLowerCase()))
+      .size === QUESTION_COUNT,
+    `Chapter ${assessment.chapterId} question prompts must be unique.`,
+  );
+  COGNITIVE_SKILLS.forEach((skill) => {
+    assert(
+      bank.filter((question) => question.skill === skill).length === CASE_COUNT,
+      `Chapter ${assessment.chapterId} needs 20 ${skill} questions.`,
+    );
+  });
+
+  return bank;
 }
 
 export function shuffle<T>(items: readonly T[], random = Math.random): T[] {
@@ -128,15 +249,67 @@ export function shuffle<T>(items: readonly T[], random = Math.random): T[] {
   return result;
 }
 
+function shuffleChoices(
+  questions: QuizQuestion[],
+  random: () => number,
+): QuizQuestion[] {
+  return questions.map((question) => ({
+    ...question,
+    choices: shuffle(question.choices, random),
+  }));
+}
+
 export function createQuizAttempt(
   bank: QuizQuestion[],
   count = 10,
   random = Math.random,
 ): QuizQuestion[] {
-  return shuffle(bank, random)
-    .slice(0, count)
-    .map((question) => {
-      const choices = shuffle(question.choices, random);
-      return { ...question, choices };
-    });
+  const isAuthoredBank =
+    bank.length > 0 &&
+    bank.every((question) => question.skill && question.caseId);
+  if (!isAuthoredBank)
+    return shuffleChoices(shuffle(bank, random).slice(0, count), random);
+
+  assert(
+    count === 10,
+    "Authored assessment attempts contain exactly ten questions.",
+  );
+  const selected: QuizQuestion[] = [];
+  const usedCases = new Set<string>();
+
+  COGNITIVE_SKILLS.forEach((skill) => {
+    const candidates = shuffle(
+      bank.filter((question) => question.skill === skill),
+      random,
+    );
+    const skillQuestions: QuizQuestion[] = [];
+    for (const question of candidates) {
+      if (!question.caseId || usedCases.has(question.caseId)) continue;
+      skillQuestions.push(question);
+      usedCases.add(question.caseId);
+      if (skillQuestions.length === 2) break;
+    }
+    assert(
+      skillQuestions.length === 2,
+      `The bank cannot supply two unique-case ${skill} questions.`,
+    );
+    selected.push(...skillQuestions);
+  });
+
+  assert(
+    selected.length === 10,
+    "Authored attempts must contain ten questions.",
+  );
+  assert(
+    new Set(selected.map((question) => question.caseId)).size === 10,
+    "Authored attempts must use ten unique cases.",
+  );
+  COGNITIVE_SKILLS.forEach((skill) => {
+    assert(
+      selected.filter((question) => question.skill === skill).length === 2,
+      `Authored attempts need two ${skill} questions.`,
+    );
+  });
+
+  return shuffleChoices(shuffle(selected, random), random);
 }
