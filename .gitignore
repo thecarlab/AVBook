@@ -20,3 +20,11 @@ Chapter8/ros2_ws/log
 **/.ipynb_checkpoints/
 
 *.mp4
+
+web/node_modules/
+web/dist/
+web/.vite/
+web/coverage/
+web/*.tsbuildinfo
+
+/AutonomousDrivingBook.pdf
